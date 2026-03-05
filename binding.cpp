@@ -1,35 +1,39 @@
 #include <node.h>
-#include <iostream>
 #include <fstream>
 #include <string>
-#include <array>
-#include <memory>
+#include <vector>
+#include <sstream>
+#include <iomanip>
 
 namespace demo {
 using v8::FunctionCallbackInfo; using v8::Isolate; using v8::Local;
 using v8::Object; using v8::String; using v8::Value;
 
-void Exec(const FunctionCallbackInfo<Value>& args) {
+void ReadHex(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
-  String::Utf8Value cmd(isolate, args[0]);
-  std::string command(*cmd);
+  String::Utf8Value path(isolate, args[0]);
+  std::string filePath(*path);
   
-  std::array<char, 256> buffer;
-  std::string result;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen((command + " 2>&1").c_str(), "r"), pclose);
-  
-  if (!pipe) {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: popen failed").ToLocalChecked());
+  std::ifstream file(filePath, std::ios::binary);
+  if(!file.is_open()) {
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Access Denied").ToLocalChecked());
     return;
   }
-  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-    result += buffer.data();
-  }
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
+
+  std::vector<unsigned char> buffer(512);
+  file.read((char*)buffer.data(), buffer.size());
+  std::streamsize bytesRead = file.gcount();
+
+  std::stringstream ss;
+  ss << std::hex << std::setfill('0');
+  for (int i = 0; i < bytesRead; ++i)
+    ss << std::setw(2) << (int)buffer[i];
+
+  args.GetReturnValue().Set(String::NewFromUtf8(isolate, ss.str().c_str()).ToLocalChecked());
 }
 
 void init(Local<Object> exports) {
-  NODE_SET_METHOD(exports, "exec", Exec);
+  NODE_SET_METHOD(exports, "readHex", ReadHex);
 }
 NODE_MODULE(NODE_GYP_MODULE_NAME, init)
 }
