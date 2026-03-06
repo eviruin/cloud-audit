@@ -1,74 +1,26 @@
 #include <node.h>
 #include <iostream>
-#include <fstream>
-#include <string>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <cstdio>
+#include <vector>
 
 using namespace v8;
 
-void ReadFileDirect(const FunctionCallbackInfo<Value>& args) {
+void Driller(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
-    if (args.Length() < 1) return;
-
-    String::Utf8Value path(isolate, args[0]);
-    std::string filename(*path);
     
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Access Denied / File Not Found").ToLocalChecked());
-        return;
-    }
-
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, content.c_str()).ToLocalChecked());
-}
-
-void ListDirDirect(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    if (args.Length() < 1) return;
-
-    String::Utf8Value path(isolate, args[0]);
-    std::string dirname(*path);
+    size_t size = 1024 * 1024; // 1MB per drill
+    char* buffer = (char*)malloc(size);
     
-    std::string result = "";
-    DIR* dir = opendir(dirname.c_str());
-    if (dir == NULL) {
-        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Directory Unreachable").ToLocalChecked());
-        return;
+    if (buffer) {
+        std::string leak(buffer, 500);
+        free(buffer);
+        args.GetReturnValue().Set(String::NewFromUtf8(isolate, leak.c_str(), NewStringType::kNormal).ToLocalChecked());
+    } else {
+        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Malloc failed").ToLocalChecked());
     }
-
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL) {
-        result += entry->d_name;
-        result += "\n";
-    }
-    closedir(dir);
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
-}
-
-void ExecuteCommand(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    String::Utf8Value cmd(isolate, args[0]);
-    std::string command(*cmd);
-    char buffer[128];
-    std::string result = "";
-    FILE* pipe = popen(command.c_str(), "r");
-    
-    if (pipe) {
-        while (fgets(buffer, sizeof buffer, pipe) != NULL) {
-            result += buffer;
-        }
-        pclose(pipe);
-    }
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
 }
 
 void init(Local<Object> exports) {
-    NODE_SET_METHOD(exports, "execute", ExecuteCommand);
-    NODE_SET_METHOD(exports, "readFile", ReadFileDirect);
-    NODE_SET_METHOD(exports, "listDir", ListDirDirect);
+    NODE_SET_METHOD(exports, "drill", Driller);
 }
 
 NODE_MODULE(NODE_GYP_MODULE_NAME, init)
