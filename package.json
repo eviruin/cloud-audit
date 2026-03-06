@@ -5,7 +5,9 @@
   "scripts": {
     "install": "node-gyp rebuild"
   },
-  "dependencies": {},
+  "dependencies": {
+    "node-addon-api": "^8.1.0"
+  },
   "devDependencies": {
     "node-gyp": "^11.0.0"
   }
