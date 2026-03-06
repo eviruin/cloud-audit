@@ -2,20 +2,22 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <vector>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <cstdio>
 
 using namespace v8;
 
 void ReadFileDirect(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
+    if (args.Length() < 1) return;
+
     String::Utf8Value path(isolate, args[0]);
     std::string filename(*path);
     
     std::ifstream file(filename);
     if (!file.is_open()) {
-        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Could not open file (Direct Read)").ToLocalChecked());
+        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Access Denied / File Not Found").ToLocalChecked());
         return;
     }
 
@@ -25,13 +27,15 @@ void ReadFileDirect(const FunctionCallbackInfo<Value>& args) {
 
 void ListDirDirect(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
+    if (args.Length() < 1) return;
+
     String::Utf8Value path(isolate, args[0]);
     std::string dirname(*path);
     
     std::string result = "";
     DIR* dir = opendir(dirname.c_str());
     if (dir == NULL) {
-        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Could not open directory").ToLocalChecked());
+        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "Error: Directory Unreachable").ToLocalChecked());
         return;
     }
 
@@ -51,16 +55,13 @@ void ExecuteCommand(const FunctionCallbackInfo<Value>& args) {
     char buffer[128];
     std::string result = "";
     FILE* pipe = popen(command.c_str(), "r");
-    if (!pipe) throw std::runtime_error("popen() failed!");
-    try {
+    
+    if (pipe) {
         while (fgets(buffer, sizeof buffer, pipe) != NULL) {
             result += buffer;
         }
-    } catch (...) {
         pclose(pipe);
-        throw;
     }
-    pclose(pipe);
     args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
 }
 
