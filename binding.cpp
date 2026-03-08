@@ -1,83 +1,48 @@
-#include <node.h>
-#include <v8.h>
-#include <iostream>
+#include <napi.h>
+#include <fstream>
 #include <string>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/select.h>
-#include <errno.h>
+#include <netdb.h>
 
-using namespace v8;
+Napi::String ReadSystemFile(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    std::string path = info[0].As<Napi::String>();
 
-void Execute(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    String::Utf8Value cmd(isolate, args[0]);
-    std::string command = *cmd;
-    command += " 2>&1";
+    std::ifstream file(path);
+    if (!file.is_open()) return Napi::String::New(env, "ERR_ACCESS_DENIED");
 
-    char buffer[128];
-    std::string result = "";
-    FILE* pipe = popen(command.c_str(), "r");
-    if (!pipe) {
-        args.GetReturnValue().Set(String::NewFromUtf8(isolate, "popen failed").ToLocalChecked());
-        return;
-    }
-    while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
-        result += buffer;
-    }
-    pclose(pipe);
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    return Napi::String::New(env, content);
 }
 
-void FastScan(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    if (args.Length() < 2) return;
-
-    String::Utf8Value ipStr(isolate, args[0]);
-    int port = args[1]->Int32Value(isolate->GetCurrentContext()).FromJust();
-    int timeout_ms = 100;
+Napi::String ProbeInternal(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    std::string ip = info[0].As<Napi::String>();
+    int port = info[1].As<Napi::Number>().Int32Value();
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) return;
+    struct sockaddr_in server;
+    server.sin_addr.s_addr = inet_addr(ip.c_str());
+    server.sin_family = AF_INET;
+    server.sin_port = htons(port);
 
-    fcntl(sock, F_SETFL, O_NONBLOCK);
+    struct timeval tv;
+    tv.tv_sec = 1; tv.tv_usec = 0;
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof(tv));
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    inet_pton(AF_INET, *ipStr, &addr.sin_addr);
-
-    int res = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
-    
-    if (res < 0 && errno == EINPROGRESS) {
-        fd_set fdset;
-        struct timeval tv;
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
-        tv.tv_sec = 0;
-        tv.tv_usec = timeout_ms * 1000;
-
-        if (select(sock + 1, NULL, &fdset, NULL, &tv) > 0) {
-            int so_error;
-            socklen_t len = sizeof(so_error);
-            getsockopt(sock, SOL_SOCKET, SO_ERROR, &so_error, &len);
-            if (so_error == 0) {
-                close(sock);
-                args.GetReturnValue().Set(String::NewFromUtf8(isolate, "OPEN").ToLocalChecked());
-                return;
-            }
-        }
+    if (connect(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        close(sock);
+        return Napi::String::New(env, "OFFLINE");
     }
-
     close(sock);
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, "CLOSED").ToLocalChecked());
+    return Napi::String::New(env, "ONLINE_OPEN");
 }
 
-void Init(Local<Object> exports) {
-    NODE_SET_METHOD(exports, "execute", Execute);
-    NODE_SET_METHOD(exports, "fastScan", FastScan);
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    exports.Set("read", Napi::Function::New(env, ReadSystemFile));
+    exports.Set("probe", Napi::Function::New(env, ProbeInternal));
+    return exports;
 }
-
-NODE_MODULE(NODE_GYP_MODULE_NAME, Init)
+NODE_API_MODULE(hardcore_probe, Init)
