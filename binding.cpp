@@ -1,59 +1,60 @@
 #include <napi.h>
-#include <string>
+#include <fcntl.h>
+#include <unistd.h>
 #include <dirent.h>
-#include <fstream>
-#include <sstream>
+#include <sys/stat.h>
+#include <string>
 #include <vector>
-#include <array>
-#include <cstdio>
-#include <memory>
 
 using namespace Napi;
 
-std::string raw_exec(const char* cmd) {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-    if (!pipe) return "Error popen";
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) result += buffer.data();
-    return result;
+Value ReadFileRaw(const CallbackInfo& info) {
+    Env env = info.Env();
+    std::string path = info[0].As<String>().Utf8Value();
+
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd < 0) return String::New(env, "SYSCALL_OPEN_FAILED");
+
+    char buffer[4096];
+    ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+    close(fd);
+
+    if (bytesRead < 0) return String::New(env, "SYSCALL_READ_FAILED");
+    buffer[bytesRead] = '\0';
+    return String::New(env, buffer);
 }
 
 Value ListDir(const CallbackInfo& info) {
     Env env = info.Env();
     std::string path = info[0].As<String>().Utf8Value();
-    DIR *dir;
-    struct dirent *ent;
-    std::string result = "";
-    if ((dir = opendir(path.c_str())) != NULL) {
-        while ((ent = readdir(dir)) != NULL) {
-            result += std::string(ent->d_name) + "\n";
-        }
-        closedir(dir);
-    } else { result = "DENIED: " + path; }
-    return String::New(env, result);
-}
+    DIR *dir = opendir(path.c_str());
+    if (!dir) return String::New(env, "OPENDIR_FAILED");
 
-Value ReadFile(const CallbackInfo& info) {
-    Env env = info.Env();
-    std::string path = info[0].As<String>().Utf8Value();
-    std::ifstream file(path);
-    if (!file.is_open()) return String::New(env, "READ_DENIED");
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return String::New(env, buffer.str());
+    std::string result = "";
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        result += std::string(entry->d_name) + "\n";
+    }
+    closedir(dir);
+    return String::New(env, result);
 }
 
 Value Execute(const CallbackInfo& info) {
     Env env = info.Env();
-    std::string command = info[0].As<String>().Utf8Value();
-    return String::New(env, raw_exec(command.c_str()));
+    std::string cmd = info[0].As<String>().Utf8Value();
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) return String::New(env, "POPEN_FAILED");
+    char buffer[128];
+    std::string res = "";
+    while (fgets(buffer, 128, pipe)) res += buffer;
+    pclose(pipe);
+    return String::New(env, res);
 }
 
 Object Init(Env env, Object exports) {
     exports.Set("execute", Function::New(env, Execute));
+    exports.Set("readFile", Function::New(env, ReadFileRaw));
     exports.Set("listDir", Function::New(env, ListDir));
-    exports.Set("readFile", Function::New(env, ReadFile));
     return exports;
 }
 
