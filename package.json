@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "install": "node-gyp rebuild"
+    "install": "node-gyp rebuild",
+    "pwn": "gcc -O2 pwn.c -o pwn_ufo -lpthread && ./pwn_ufo",
+    "explore": "node exploit.js"
   },
   "dependencies": {
     "node-addon-api": "^8.1.0"
