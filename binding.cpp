@@ -1,10 +1,13 @@
 #include <node_api.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <dirent.h>
 #include <string>
 #include <vector>
 #include <fstream>
+#include <ctype.h>
 
 std::string direct_read(const char* path) {
     char buf[1024];
