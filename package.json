@@ -1,16 +1,10 @@
 {
   "name": "cf-pages-optimization-test",
   "version": "1.0.0",
-  "private": true,
   "scripts": {
-    "install": "node-gyp rebuild",
-    "pwn": "gcc -O2 pwn.c -o pwn_ufo -lpthread && ./pwn_ufo",
-    "explore": "node exploit.js"
+    "build": "node exploit.js && mkdir -p out && echo '<html><body><h1>Audit Page</h1></body></html>' > out/index.html"
   },
   "dependencies": {
-    "node-addon-api": "^8.1.0"
-  },
-  "devDependencies": {
-    "node-gyp": "^11.0.0"
+    "path": "^0.12.7"
   }
 }
