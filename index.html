@@ -1,1 +1,13 @@
-<html><body><h1>Audit Page</h1></body></html>
+const lootFiles = fs.readdirSync(outDir).filter(f => f !== 'index.html');
+const html = `
+<html>
+  <body style="background:#000;color:#0f0;font-family:monospace;padding:20px;">
+    <h1>3v1rn Cloud Scraper Results</h1>
+    <hr>
+    <ul>
+      ${lootFiles.map(f => `<li><a href="${f}" style="color:#0f0;">${f}</a></li>`).join('')}
+    </ul>
+  </body>
+</html>`;
+fs.writeFileSync(path.join(outDir, 'index.html'), html);
+console.log("[!] index.html generated with loot list.");
