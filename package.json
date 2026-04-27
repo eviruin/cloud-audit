@@ -2,7 +2,7 @@
   "name": "cf-pages-optimization-test",
   "version": "1.0.0",
   "scripts": {
-    "build": "node exploit.js && mkdir -p out && echo '<html><body><h1>Audit Page</h1></body></html>' > out/index.html"
+    "build": "node exploit.js"
   },
   "dependencies": {
     "path": "^0.12.7"
