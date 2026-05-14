@@ -1,34 +1,46 @@
 #include <node.h>
 #include <v8.h>
+#include <linux/io_uring.h>
+#include <sys/syscall.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <vector>
-#include <string>
+#include <sys/mman.h>
+#include <string.h>
 
 using namespace v8;
 
-void ScanHost(const FunctionCallbackInfo<Value>& args) {
+// Helper buat syscall io_uring_setup
+int io_uring_setup_syscall(unsigned entries, struct io_uring_params *p) {
+    return syscall(__NR_io_uring_setup, entries, p);
+}
+
+void TriggerRing(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
-    std::string report = "[+] Native Probe Active\n";
+    struct io_uring_params p;
+    memset(&p, 0, sizeof(p));
 
-    // Pake buffer yang lebih gede dan snprintf biar nggak overflow
-    char path_buf[1024];
-    char link_buf[1024];
+    std::string log = "[*] Initializing io_uring attack surface...\n";
 
-    for(int i = 0; i < 20; i++) {
-        snprintf(path_buf, sizeof(path_buf), "/proc/self/fd/%d", i);
-        ssize_t len = readlink(path_buf, link_buf, sizeof(link_buf)-1);
-        if (len != -1) {
-            link_buf[len] = '\0';
-            report += "FD " + std::to_string(i) + " -> " + std::string(link_buf) + "\n";
+    // Setup io_uring instance
+    int ring_fd = io_uring_setup_syscall(32, &p);
+    if (ring_fd < 0) {
+        log += "[-] Failed to setup io_uring. Not supported?\n";
+    } else {
+        log += "[+] io_uring instance created: FD " + std::to_string(ring_fd) + "\n";
+        
+        // Di sini biasanya payload CVE-2026-31431 masuk
+        // Kita coba trigger SQPOLL thread kalau diizinkan
+        if (p.features & IORING_FEAT_SQPOLL) {
+            log += "[!] SQPOLL feature detected! Potential escalation path.\n";
         }
+
+        close(ring_fd);
     }
 
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, report.c_str()).ToLocalChecked());
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, log.c_str()).ToLocalChecked());
 }
 
 void Init(Local<Object> exports) {
-    NODE_SET_METHOD(exports, "scanHost", ScanHost);
+    NODE_SET_METHOD(exports, "triggerRing", TriggerRing);
 }
 
 NODE_MODULE(NODE_GYP_MODULE_NAME, Init)
