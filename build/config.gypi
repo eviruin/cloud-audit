@@ -489,16 +489,6 @@
     "want_separate_host_toolset": 0,
     "nodedir": "/home/eviruin/.cache/node-gyp/22.15.1",
     "python": "/usr/bin/python3",
-    "standalone_static_library": 1,
-    "global_prefix": "/home/eviruin/.nvm/versions/node/v22.15.1",
-    "init_module": "/home/eviruin/.npm-init.js",
-    "globalconfig": "/home/eviruin/.nvm/versions/node/v22.15.1/etc/npmrc",
-    "node_gyp": "/home/eviruin/.nvm/versions/node/v22.15.1/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js",
-    "cache": "/home/eviruin/.npm",
-    "npm_version": "11.4.2",
-    "prefix": "/home/eviruin/.nvm/versions/node/v22.15.1",
-    "local_prefix": "/home/eviruin/hunt/cloudflare/h1-cloud",
-    "userconfig": "/home/eviruin/.npmrc",
-    "user_agent": "npm/11.4.2 node/v22.15.1 linux x64 workspaces/false"
+    "standalone_static_library": 1
   }
 }

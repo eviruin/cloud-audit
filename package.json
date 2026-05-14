@@ -9,6 +9,7 @@
     "build": "node-gyp configure build"
   },
   "dependencies": {
+    "nan": "^2.27.0",
     "node-gyp": "^11.5.0"
   },
   "devDependencies": {

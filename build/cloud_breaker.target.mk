@@ -24,7 +24,6 @@ CFLAGS_Debug := \
 	-Wall \
 	-Wextra \
 	-Wno-unused-parameter \
-	-std=c++11 \
 	-m64 \
 	-g \
 	-O0
@@ -47,7 +46,7 @@ INCS_Debug := \
 	-I/home/eviruin/.cache/node-gyp/22.15.1/deps/uv/include \
 	-I/home/eviruin/.cache/node-gyp/22.15.1/deps/zlib \
 	-I/home/eviruin/.cache/node-gyp/22.15.1/deps/v8/include \
-	-I/home/eviruin/hunt/cloudflare/h1-cloud/node_modules/node-addon-api
+	-I$(srcdir)/node_modules/nan
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=cloud_breaker' \
@@ -69,7 +68,6 @@ CFLAGS_Release := \
 	-Wall \
 	-Wextra \
 	-Wno-unused-parameter \
-	-std=c++11 \
 	-m64 \
 	-O3 \
 	-fno-omit-frame-pointer
@@ -92,7 +90,7 @@ INCS_Release := \
 	-I/home/eviruin/.cache/node-gyp/22.15.1/deps/uv/include \
 	-I/home/eviruin/.cache/node-gyp/22.15.1/deps/zlib \
 	-I/home/eviruin/.cache/node-gyp/22.15.1/deps/v8/include \
-	-I/home/eviruin/hunt/cloudflare/h1-cloud/node_modules/node-addon-api
+	-I$(srcdir)/node_modules/nan
 
 OBJS := \
 	$(obj).target/$(TARGET)/binding.o
