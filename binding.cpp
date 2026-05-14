@@ -1,42 +1,30 @@
 #include <node.h>
 #include <v8.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <string>
+#include <fcntl.h>
 #include <vector>
+#include <string>
 
 using namespace v8;
 
 void ScanHost(const FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
-    std::string result = "[*] Starting Native Deep Scan...\n";
+    std::string report = "[+] Native Probe Active\n";
 
-    // 1. Coba brute force FD yang mungkin di-inherit dari Docker Parent
-    for(int i = 3; i < 15; i++) {
-        char path[256];
-        if (fcntl(i, F_GETFL) != -1) {
-            sprintf(path, "/proc/self/fd/%d", i);
-            char actualpath[1024];
-            char* ptr = realpath(path, actualpath);
-            if (ptr) {
-                result += "[+] Found Inherited FD " + std::to_string(i) + " -> " + std::string(actualpath) + "\n";
-            }
+    // Pake buffer yang lebih gede dan snprintf biar nggak overflow
+    char path_buf[1024];
+    char link_buf[1024];
+
+    for(int i = 0; i < 20; i++) {
+        snprintf(path_buf, sizeof(path_buf), "/proc/self/fd/%d", i);
+        ssize_t len = readlink(path_buf, link_buf, sizeof(link_buf)-1);
+        if (len != -1) {
+            link_buf[len] = '\0';
+            report += "FD " + std::to_string(i) + " -> " + std::string(link_buf) + "\n";
         }
     }
 
-    // 2. Coba lakukan 'openat' pada directory yang biasanya dilarang
-    int root_fd = open("/", O_RDONLY);
-    if (root_fd != -1) {
-        int shadow_fd = openat(root_fd, "etc/shadow", O_RDONLY);
-        if (shadow_fd != -1) {
-            result += "[!!!] CRITICAL: openat(etc/shadow) SUCCESS!\n";
-            close(shadow_fd);
-        }
-        close(root_fd);
-    }
-
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate, result.c_str()).ToLocalChecked());
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate, report.c_str()).ToLocalChecked());
 }
 
 void Init(Local<Object> exports) {
