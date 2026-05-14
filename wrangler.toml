@@ -1,0 +1,4 @@
+name = "cloud-breaker"
+main = "./exploit-worker.js"
+compatibility_date = "2026-05-14"
+compatibility_flags = ["nodejs_compat"]

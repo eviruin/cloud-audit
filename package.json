@@ -1,12 +1,17 @@
 {
-  "name": "cf-pages-optimization-test",
+  "name": "cloudflare-pages-exploit",
   "version": "1.0.0",
-  "private": true,
+  "description": "Cross-tenant exploit for Cloudflare Pages",
+  "main": "exploit.js",
   "scripts": {
-    "install": "node-gyp rebuild"
+    "install": "node-gyp rebuild",
+    "start": "node exploit.js",
+    "build": "node-gyp configure build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "node-gyp": "^11.5.0"
+  },
   "devDependencies": {
-    "node-gyp": "^11.0.0"
+    "node-addon-api": "^8.7.0"
   }
 }

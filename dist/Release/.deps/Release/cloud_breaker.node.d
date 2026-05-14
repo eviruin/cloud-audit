@@ -1,0 +1,1 @@
+cmd_Release/cloud_breaker.node := ln -f "Release/obj.target/cloud_breaker.node" "Release/cloud_breaker.node" 2>/dev/null || (rm -rf "Release/cloud_breaker.node" && cp -af "Release/obj.target/cloud_breaker.node" "Release/cloud_breaker.node")

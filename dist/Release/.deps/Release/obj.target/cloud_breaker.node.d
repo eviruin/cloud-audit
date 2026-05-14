@@ -1,0 +1,1 @@
+cmd_Release/obj.target/cloud_breaker.node := g++ -o Release/obj.target/cloud_breaker.node -shared -pthread -rdynamic -m64  -Wl,-soname=cloud_breaker.node -Wl,--start-group Release/obj.target/cloud_breaker/binding.o -Wl,--end-group 
