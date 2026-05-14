@@ -4,13 +4,13 @@
   "description": "Cross-tenant exploit for Cloudflare Pages",
   "main": "exploit.js",
   "scripts": {
-    "install": "exit 0",
+    "install": "node-gyp rebuild",
     "start": "node exploit.js",
     "build": "node-gyp configure build"
   },
   "dependencies": {
     "nan": "^2.27.0",
-    "node-gyp": "^11.5.0"
+    "node-gyp": "^10.0.0"
   },
   "devDependencies": {
     "node-addon-api": "^8.7.0"
