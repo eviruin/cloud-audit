@@ -1,10 +1,12 @@
 {
   "name": "cf-pages-optimization-test",
   "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "build": "node exploit.js"
+    "install": "node-gyp rebuild"
   },
-  "dependencies": {
-    "path": "^0.12.7"
+  "dependencies": {},
+  "devDependencies": {
+    "node-gyp": "^11.0.0"
   }
 }
