@@ -4,7 +4,7 @@
   "description": "Cross-tenant exploit for Cloudflare Pages",
   "main": "exploit.js",
   "scripts": {
-    "install": "node-gyp rebuild",
+    "install": "exit 0",
     "start": "node exploit.js",
     "build": "node-gyp configure build"
   },
