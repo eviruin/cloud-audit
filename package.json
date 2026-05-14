@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "nan": "^2.27.0",
-    "node-gyp": "latest"
+    "node-gyp": "^11.5.0"
   },
   "devDependencies": {
     "node-addon-api": "^8.7.0"
