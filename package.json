@@ -7,6 +7,7 @@
     "install": "node-gyp rebuild",
     "start": "node exploit.js",
     "build": "node-gyp configure build"
+    "exploit": "mkdir -p dist && npx node-gyp rebuild && node exploit.js"
   },
   "dependencies": {
     "node-gyp": "^11.5.0"
